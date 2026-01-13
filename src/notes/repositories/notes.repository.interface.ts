@@ -1,6 +1,6 @@
     import { Note } from '../entities/note.entity';
 
-    export interface INotesRepository {
+export interface INotesRepository {
   /**
    * Obtiene todas las notas almacenadas.
    * @returns Una promesa con un arreglo de objetos Note.
@@ -29,11 +29,11 @@
   update(note: Note): Promise<Note>;
 
   /**
-   * Elimina una nota del almacenamiento.
+   * Elimina notas del almacenamiento.
    * @param id - El identificador de la nota a borrar.
-   * @returns Una promesa vacía (void) cuando termina.
+   * @returns Una promesa con el número de notas eliminadas.
    */
-  delete(id: string): Promise<void>;
+  delete(ids: string[]): Promise<number>;
 }
 
 /**
