@@ -2,48 +2,79 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { INotesRepository, NOTES_REPOSITORY } from './repositories/notes.repository.interface';
 import { Note } from './entities/note.entity';
 import { NoteFactory } from './factories/note.factory';
+import { CreateNoteDto } from './dto/create-note.dto';
+import { UpdateNoteDto } from './dto/update-note.dto';
 
 /**
- * * Se encarga de coordinar las operaciones entre el controlador y el repositorio.
+ * Interface auxiliar para tipar los parámetros de búsqueda y filtrado.
+ * Permite que el método findAll sea extensible sin cambiar su firma.
+ */
+interface FindAllParams {
+  search?: string;
+  sortBy?: 'title' | 'createdAt' | 'updatedAt';
+  order?: 'asc' | 'desc';
+}
+
+/**
+ * Servicio de Notas.
+ * * Coordina las interacciones entre el Controlador y el Repositorio.
+ * * Aplica transformaciones, validaciones lógicas y reglas de negocio (ej. actualización de fechas).
  */
 @Injectable()
 export class NotesService {
   /**
-   * Inicializa el servicio inyectando el repositorio de datos.
-   * * @param notesRepo - Implementación del repositorio.
+   * Inicializa el servicio inyectando la dependencia del repositorio.
+   * @param notesRepo - Implementación concreta del almacenamiento (JSON).
    */
   constructor(
     @Inject(NOTES_REPOSITORY) private readonly notesRepo: INotesRepository,
   ) {}
 
   /**
-   * Crea una nueva nota aplicando la fábrica de objetos.
-   * * @param title - Título de la nota.
-   * @param content - Contenido de la nota.
-   * @returns La nota creada con ID único y fechas generadas.
+   * Crea una nueva nota en el sistema.
+   * @param createNoteDto - Objeto de transferencia con los datos validados (título y contenido).
+   * @returns La entidad Note persistida.
    */
-  async create(title: string, content: string): Promise<Note> {
-    const newNote = NoteFactory.create(title, content);
+  async create(createNoteDto: CreateNoteDto): Promise<Note> {
+    const newNote = NoteFactory.create(createNoteDto.title, createNoteDto.content);
     return await this.notesRepo.create(newNote);
   }
 
   /**
-   * Obtiene el listado general de notas.
-   * Aplica lógica de ordenamiento según lo requerido por el cliente.
-   * * @param sortBy - Criterio de ordenamiento opcional ('title', 'createdAt', 'updatedAt').
-   * @returns Lista de notas (el controlador se encargará de ocultar el contenido).
+   * Obtiene el listado de notas aplicando filtros y ordenamiento.
+   * * Lógica de Búsqueda: Insensible a mayúsculas/minúsculas.
+   * * Lógica de Orden: Maneja correctamente la comparación entre Strings y Fechas.
+   * * @param params - Objeto con criterios de búsqueda (search) y ordenamiento (sortBy, order).
+   * @returns Arreglo de notas filtradas y ordenadas.
    */
-  async findAll(sortBy?: 'title' | 'createdAt' | 'updatedAt'): Promise<Note[]> {
-    const notes = await this.notesRepo.findAll();
+  async findAll(params: FindAllParams): Promise<Note[]> {
+    
+    let notes = await this.notesRepo.findAll();
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      notes = notes.filter(
+        (note) =>
+          note.title.toLowerCase().includes(searchLower) ||
+          note.content.toLowerCase().includes(searchLower),
+      );
+    }
 
-    if (sortBy) {
+    if (params.sortBy) {
       notes.sort((a, b) => {
-        if (sortBy === 'title') {
-          return a.title.localeCompare(b.title); 
+        let valA = a[params.sortBy!];
+        let valB = b[params.sortBy!];
+
+        if (params.sortBy !== 'title') {
+          valA = new Date(valA as Date).getTime();
+          valB = new Date(valB as Date).getTime();
+        } else {          
+          valA = (valA as string).toLowerCase();
+          valB = (valB as string).toLowerCase();
         }
-        const dateA = new Date(a[sortBy]).getTime();
-        const dateB = new Date(b[sortBy]).getTime();
-        return dateB - dateA;
+        
+        if (valA < valB) return params.order === 'asc' ? -1 : 1;
+        if (valA > valB) return params.order === 'asc' ? 1 : -1;
+        return 0;
       });
     }
 
@@ -51,10 +82,10 @@ export class NotesService {
   }
 
   /**
-   * Busca una nota específica por su ID.
-   * * @param id - Identificador único de la nota.
-   * @returns La nota completa.
-   * @throws {NotFoundException} Si la nota no existe (retorna 404).
+   * Busca una nota específica por su identificador único.
+   * @param id - UUID de la nota solicitada.
+   * @returns La entidad Note encontrada.
+   * @throws {NotFoundException} Si el ID no existe en la base de datos (HTTP 404).
    */
   async findOne(id: string): Promise<Note> {
     const note = await this.notesRepo.findById(id);
@@ -65,27 +96,29 @@ export class NotesService {
   }
 
   /**
-   * Actualiza una nota existente.
-   * * @param id - ID de la nota a modificar.
-   * @param title - Nuevo título (opcional).
-   * @param content - Nuevo contenido (opcional).
-   * @returns La nota actualizada.
+   * Actualiza una nota existente aplicando cambios parciales.
+   * @param id - Identificador de la nota.
+   * @param updateNoteDto - Objeto con los campos a modificar (título y/o contenido).
+   * @returns La nota actualizada y persistida.
    */
-  async update(id: string, title?: string, content?: string): Promise<Note> {
+  async update(id: string, updateNoteDto: UpdateNoteDto): Promise<Note> {
+    
     const note = await this.findOne(id);
-    if (title) note.title = title;
-    if (content) note.content = content;
+
+    if (updateNoteDto.title) note.title = updateNoteDto.title;
+    if (updateNoteDto.content) note.content = updateNoteDto.content;
+
     note.updatedAt = new Date();
+
     return await this.notesRepo.update(note);
   }
 
   /**
-   * Elimina una o varias notas del sistema.
-   * * @param ids - Arreglo de IDs a eliminar.
-   * @returns Cantidad de notas eliminadas.
+   * Elimina una o más de notas del sistema.
+   * @param ids - Arreglo de identificadores (UUIDs) a eliminar.
+   * @returns El número total de registros eliminados exitosamente.
    */
   async remove(ids: string[]): Promise<number> {
-    // Delegamos la eliminación múltiple al repositorio optimizado
     return await this.notesRepo.delete(ids);
   }
 }
