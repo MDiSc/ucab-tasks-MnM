@@ -6,7 +6,7 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { NoteResponseDto } from './dto/note-response.dto';
 import { Note } from './entities/note.entity';
-import { NoteSummaryDto } from './dto/note-summary.dto'; // ✅ Corregido (sin .js)
+import { NoteSummaryDto } from './dto/note-summary.dto'; 
 
 /**
  * Servicio de Notas (Facade).
