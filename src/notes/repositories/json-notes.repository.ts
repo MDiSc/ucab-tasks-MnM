@@ -88,15 +88,13 @@ export class JsonNotesRepository implements INotesRepository {
   /**
    * Elimina una o varias notas del archivo JSON.
    * @param ids - Arreglo con los IDs de las notas a eliminar.
-   * @returns La cantidad numérica de notas que fueron eliminadas.
+   * @returns La cantidad de notas que fueron eliminadas.
    */
   async delete(ids: string[]): Promise<number> {
     const notes = await this.readDB();
     const set = new Set(ids); 
-    const cantBefore = notes.length;
-    
+    const cantBefore = notes.length;    
     const remaining = notes.filter((n) => !set.has(n.id));
-
     const removed = cantBefore - remaining.length;
     await this.writeDB(remaining);
     return removed;

@@ -40,4 +40,4 @@ export interface INotesRepository {
  * Token de inyección para el repositorio de notas.
  * Se usa en el decorador @Inject() para que NestJS sepa qué implementación usar.
  */
-export const NOTES_REPOSITORY = 'NOTES_REPOSITORY';
+export const NOTES_REPOSITORY_TOKEN = 'NOTES_REPOSITORY_TOKEN';
