@@ -18,8 +18,8 @@ export class JsonNotesRepository implements INotesRepository {
    * Inicializa el repositorio y define la ruta del archivo.
    * @param dbFileName - Nombre del archivo JSON (por defecto 'database.json').
    */
-  constructor(dbFileName = 'database.json') {
-    this.dbPath = path.resolve(process.cwd(), dbFileName);
+  constructor() {
+    this.dbPath = path.resolve(process.cwd(), 'database.json');
   }
 
   /**
@@ -75,11 +75,11 @@ export class JsonNotesRepository implements INotesRepository {
   async update(note: Note): Promise<Note> {
     const notes = await this.readDB();
     const idx = notes.findIndex((n) => n.id === note.id);
-    
+
     if (idx === -1) {
       throw new NotFoundException(`Note with id ${note.id} not found`);
     }
-    
+
     notes[idx] = note;
     await this.writeDB(notes);
     return note;
@@ -92,8 +92,8 @@ export class JsonNotesRepository implements INotesRepository {
    */
   async delete(ids: string[]): Promise<number> {
     const notes = await this.readDB();
-    const set = new Set(ids); 
-    const cantBefore = notes.length;    
+    const set = new Set(ids);
+    const cantBefore = notes.length;
     const remaining = notes.filter((n) => !set.has(n.id));
     const removed = cantBefore - remaining.length;
     await this.writeDB(remaining);
