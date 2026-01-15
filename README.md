@@ -87,4 +87,5 @@ Una vez iniciada la aplicación, visita:
 - **DTOs:** Validación de datos de entrada y salida.
 
 ## 👥 Equipo
-- [Tu Nombre/Equipo]
+- Maurizio Brazon
+- Marco Cegarra
